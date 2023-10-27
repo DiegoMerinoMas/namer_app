@@ -13,6 +13,8 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    DatabaseHelper.printFavorites();
+
     return ChangeNotifierProvider(
       create: (context) => MyAppState(),
       child: MaterialApp(
@@ -39,8 +41,10 @@ class MyAppState extends ChangeNotifier {
   void toggleFavorite() {
     if (favorites.contains(current)) {
       favorites.remove(current);
+      DatabaseHelper.deleteFavorite(current);
     } else {
       favorites.add(current);
+      DatabaseHelper.insertFavorite(current);
     }
     notifyListeners();
   }
@@ -50,7 +54,10 @@ class MyAppState extends ChangeNotifier {
     DatabaseHelper.deleteFavorite(pair);
     notifyListeners();
   }
-
+  void loadFavorites() async {
+    favorites = await DatabaseHelper.getFavorites();
+    notifyListeners();
+  }
 }
 
 class MyHomePage extends StatefulWidget {
@@ -114,6 +121,7 @@ class GeneratorPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var appState = context.watch<MyAppState>();
+    appState.loadFavorites();
     var pair = appState.current;
 
     IconData icon;
@@ -276,4 +284,24 @@ class DatabaseHelper {
       whereArgs: [pair.first, pair.second],
     );
   }
+
+
+  static Future<void> printFavorites() async {
+    try {
+      final Database db = await database;
+      final List<Map<String, dynamic>> maps = await db.query('favorites');
+
+      if (maps.isNotEmpty) {
+        print('Printing favorites:');
+        for (var map in maps) {
+          print('ID: ${map['id']}, First: ${map['first']}, Second: ${map['second']}');
+        }
+      } else {
+        print('No favorites found.');
+      }
+    } catch (e) {
+      print('Error al imprimir favoritos: $e');
+    }
+  }
+
 }
